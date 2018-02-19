@@ -73,7 +73,7 @@ using System.Threading.Tasks;
 			}
 		}
 
-		public static Thread RunAsync(Action a)
+		public static void RunAsync(Action a)
 		{
 	#if !UNITY_EDITOR && UNITY_METRO
 			Task.Run(() => RunAction(a));
@@ -81,8 +81,6 @@ using System.Threading.Tasks;
 			var t = new Thread(RunAction);
 			t.Priority = System.Threading.ThreadPriority.Normal;
 			t.Start(a);
-
-            return t;
 	#endif
 		}
 

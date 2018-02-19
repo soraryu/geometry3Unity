@@ -19,27 +19,36 @@ public class ReduceDemo : MonoBehaviour
     float lastEdgeLength;
 
 
+    DMesh3 bunnyMesh = null;
+
     // Use this for initialization
     void Start ()
     {
         Loom.Check();
 
         curPath = Application.dataPath;
+        bunnyMesh = g3UnityUtils.UnityMeshToDMesh(mesh);
+
         Loom.RunAsync(Task);
     }
 
+    public Mesh mesh;
+
     void Task()
     {
+        //try { 
+
+
         watch = new System.Diagnostics.Stopwatch();
         watch.Start();
 
         // find path to sample file
-        string filePath = Path.Combine(curPath, Path.Combine("..\\sample_files", "bunny_solid.obj"));
+        // string filePath = Path.Combine(curPath, Path.Combine("..\\sample_files", "bunny_solid.obj"));
 
         // LOADING
 
         // load sample file, convert to unity coordinate system, translate and scale to origin
-        var bunnyMesh = sdfMesh = StandardMeshReader.ReadMesh(filePath);
+        // var bunnyMesh = sdfMesh = StandardMeshReader.ReadMesh(filePath);
         if (bunnyMesh == null)
             bunnyMesh = new Sphere3Generator_NormalizedCube().Generate().MakeDMesh();
         MeshTransforms.FlipLeftRightCoordSystems(bunnyMesh);
@@ -72,7 +81,7 @@ public class ReduceDemo : MonoBehaviour
         MeshSignedDistanceGrid sdf = new MeshSignedDistanceGrid(combinedMesh, cell_size);
         sdf.Compute();
 
-        Debug.Log("sdf took " + watch.ElapsedMilliseconds); watch.Restart();
+        Debug.Log("sdf took " + watch.ElapsedMilliseconds); watch.Reset(); watch.Start();
 
         DenseGrid3f grid = sdf.Grid;
 
@@ -90,7 +99,7 @@ public class ReduceDemo : MonoBehaviour
 
         // StandardMeshWriter.WriteMesh("c:\\demo\\output_mesh.obj", c.Mesh, WriteOptions.Defaults);
 
-        Debug.Log("marching cubes took " + watch.ElapsedMilliseconds); watch.Restart();
+        Debug.Log("marching cubes took " + watch.ElapsedMilliseconds); watch.Reset(); watch.Start();
 
         //g3UnityUtils.SetTemporaryMesh(temporaryMesh, reducedMesh);
 
@@ -105,6 +114,13 @@ public class ReduceDemo : MonoBehaviour
 
             Debug.Log("unity blocking side took " + watch.ElapsedMilliseconds);
         });
+
+        //}
+        //catch(System.Exception e)
+        //{
+        //    Debug.Log(e.ToString());
+        //    Debug.Log(e.GetBaseException().StackTrace);
+        //}
     }
 
     // Update is called once per frame
@@ -170,17 +186,17 @@ public class ReduceDemo : MonoBehaviour
     {
         Loom.RunAsync(() =>
         {
-            watch.Restart();
+            watch.Reset(); watch.Start();
             Debug.Log("starting async mesh func");
 
             var processingMesh = new DMesh3(sdfMesh);
             var resultMesh = meshFunction(processingMesh);
 
-            Debug.Log("mesh func took " + watch.ElapsedMilliseconds); watch.Restart();
+            Debug.Log("mesh func took " + watch.ElapsedMilliseconds); watch.Reset(); watch.Start();
             lock (locker)
             {
                 g3UnityUtils.SetTemporaryMesh(temporaryMesh, resultMesh);
-                Debug.Log("d3 to temp mesh took " + watch.ElapsedMilliseconds); watch.Restart();
+                Debug.Log("d3 to temp mesh took " + watch.ElapsedMilliseconds); watch.Reset(); watch.Start();
             }
 
             Loom.QueueOnMainThread(() =>
