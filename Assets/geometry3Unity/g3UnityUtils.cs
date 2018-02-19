@@ -260,8 +260,6 @@ public class g3UnityUtils
             result = new List<Vector3>(new Vector3[nLen]);
         }
 
-        Debug.Log("nlen: " + nLen + ", " + result.Count);
-
         for (int i = 0; i < nLen; ++i)
         {
             result[i] = new Vector3(
