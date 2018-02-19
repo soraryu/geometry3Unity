@@ -31,7 +31,7 @@ public class MeshReducer : MonoBehaviour {
     }
 
     DMesh3 Reduce(DMesh3 mesh)
-    {
+    { 
         Reducer r = new Reducer(mesh);
         r.ReduceToTriangleCount(triangleCount);
         return r.Mesh;

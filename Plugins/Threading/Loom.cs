@@ -9,23 +9,27 @@ using System.Linq;
 using System.Threading.Tasks;
 #endif
 
-//namespace pfc
-//{ 
-
+namespace g3
+{
+    [ExecuteInEditMode]
 	public class Loom : MonoBehaviour
-	{
+	{ 
 		/// <summary>
 		/// Should be called my MonoBehaviours using Loom  on Awake if no Singleton is in the scene.
 		/// </summary>
 		public static void Check()
 		{
-        if (!Application.isPlaying) return;
+            // if (!Application.isPlaying) return;
 
 			if (_current == null || !_current.isActiveAndEnabled)
 			{
-				var g = new GameObject("Singleton:Loom");
-				g.hideFlags = HideFlags.HideAndDontSave;
-				_current = g.AddComponent<Loom>();
+                _current = GameObject.FindObjectOfType<Loom>();
+                if (_current == null)
+                {
+                    var g = new GameObject("__Singleton:g3:Loom");
+                    g.hideFlags = HideFlags.DontSave;
+                    _current = g.AddComponent<Loom>();
+                };
 			}
 		}
 
@@ -42,12 +46,30 @@ using System.Threading.Tasks;
 
 		void Awake()
 		{
-            if (Loom._current != null)
-                Destroy(Loom._current.gameObject);
-			Loom._current = this;
-		}
+            Init();
+        }
 
-		private List<Action> _actions = new List<Action>();
+    private void Start()
+    {
+        Init();
+    }
+
+    void Init()
+    {
+        if (Loom._current != null)
+            DestroyImmediate(Loom._current.gameObject);
+        Loom._current = this;
+
+        Check();
+    }
+
+    private void OnDestroy()
+    {
+        _actions.Clear();
+        _delayed.Clear();
+    }
+
+    private List<Action> _actions = new List<Action>();
 		public class DelayedQueueItem
 		{
 			public float time;
@@ -57,12 +79,6 @@ using System.Threading.Tasks;
 
 		public static void QueueOnMainThread(Action action, float time = 0f)
 		{
-            //if (!Application.isPlaying)
-            //{
-            //    action();
-            //    return;
-            //}
-
 			if (time != 0)
 			{
 				lock (Current._delayed)
@@ -81,18 +97,14 @@ using System.Threading.Tasks;
 
 		public static void RunAsync(Action a)
 		{
+            Check();
+
 #if !UNITY_EDITOR && UNITY_METRO
 			Task.Run(() => RunAction(a));
 #else
-        //if (Application.isPlaying)
-        {
             var t = new Thread(RunAction);
             t.Priority = System.Threading.ThreadPriority.Normal;
             t.Start(a);
-        }
-        //else { 
-        //    a();
-        //}
 #endif
     }
 
@@ -113,13 +125,16 @@ using System.Threading.Tasks;
 		// Update is called once per frame
 		void Update()
 		{
+            Check();
+
 			var actions = new List<Action>();
 			lock (_actions)
 			{
 				actions.AddRange(_actions);
 				_actions.Clear();
-			}
-			foreach (var a in actions)
+            }
+            // Debug.Log("updating loom : " + _actions.Count);
+            foreach (var a in actions)
 			{
 				a();
 			}
@@ -138,4 +153,4 @@ using System.Threading.Tasks;
 			}
 		}
 	}
-//}
+}
