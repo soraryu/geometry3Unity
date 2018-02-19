@@ -45,20 +45,75 @@ public class g3UnityUtils
         filter.sharedMesh = unityMesh;
     }
 
+    public static void SetMeshFilterMesh(MeshFilter filter, DMesh3 mesh)
+    {
+        DMesh3 useMesh = mesh;
+        if (!mesh.IsCompact)
+        {
+            useMesh = new DMesh3(mesh, true);
+        }
+        
+        if (filter == null)
+            throw new Exception("g3UnityUtil.SetGOMesh: go " + filter.name + " has no MeshFilter");
+        Mesh unityMesh = DMeshToUnityMesh(useMesh, false, filter.sharedMesh);
+        filter.sharedMesh = unityMesh;
+    }
 
+    public static void SetTemporaryMesh(TemporaryMesh sharedMesh, DMesh3 mesh)
+    {
+        DMesh3 useMesh = mesh;
+        if (!mesh.IsCompact)
+        {
+            useMesh = new DMesh3(mesh, true);
+        }
 
+        if (sharedMesh == null)
+            throw new Exception("g3UnityUtil.SetSharedMesh: mesh is null");
+
+        DMeshToTemporaryMesh(useMesh, sharedMesh);
+    }
+
+    public class TemporaryMesh
+    {
+        public List<Vector3> vertices = new List<Vector3>();
+        public List<int> triangles = new List<int>();
+        public List<Vector3> normals = new List<Vector3>();
+        public List<Color> colors = new List<Color>();
+        public List<Vector2> uv1 = new List<Vector2>();
+
+        public void ApplyTo(Mesh mesh, bool recalculateNormals = false)
+        {
+            mesh.Clear();
+
+            mesh.SetVertices(vertices);
+            mesh.SetTriangles(triangles, 0);
+            mesh.SetUVs(0, uv1);
+            if (!recalculateNormals)
+                mesh.SetNormals(normals);
+            else
+                mesh.SetNormals(null);
+            mesh.SetColors(colors);
+
+            if (recalculateNormals)
+                mesh.RecalculateNormals();
+        }
+    }
 
     /// <summary>
     /// Convert DMesh3 to unity Mesh
     /// </summary>
-    public static Mesh DMeshToUnityMesh(DMesh3 m, bool bLimitTo64k = false)
+    public static Mesh DMeshToUnityMesh(DMesh3 m, bool bLimitTo64k = false, Mesh sharedMesh = null)
     {
         if (bLimitTo64k && (m.MaxVertexID > 65535 || m.MaxTriangleID > 65535) ) {
             Debug.Log("g3UnityUtils.DMeshToUnityMesh: attempted to convert DMesh larger than 65535 verts/tris, not supported by Unity!");
             return null;
         }
 
-        Mesh unityMesh = new Mesh();
+        Mesh unityMesh = null;
+        if (sharedMesh != null)
+            unityMesh = sharedMesh;
+        else
+            unityMesh = new Mesh();
         unityMesh.vertices = dvector_to_vector3(m.VerticesBuffer);
         if (m.HasVertexNormals)
             unityMesh.normals = (m.HasVertexNormals) ? dvector_to_vector3(m.NormalsBuffer) : null;
@@ -74,6 +129,20 @@ public class g3UnityUtils
         return unityMesh;
     }
 
+    /// </summary>
+    public static void DMeshToTemporaryMesh(DMesh3 m, TemporaryMesh sharedMesh = null)
+    {
+        var unityMesh = sharedMesh;
+
+        dvector_to_vector3(m.VerticesBuffer, ref unityMesh.vertices);
+        if (m.HasVertexNormals)
+            dvector_to_vector3(m.NormalsBuffer, ref unityMesh.normals);
+        if (m.HasVertexColors)
+            dvector_to_color(m.ColorsBuffer, ref unityMesh.colors);
+        if (m.HasVertexUVs)
+             dvector_to_vector2(m.UVBuffer, ref unityMesh.uv1);
+        dvector_to_int(m.TrianglesBuffer, ref unityMesh.triangles);
+    }
 
     /// <summary>
     /// Convert unity Mesh to a g3.DMesh3. Ignores UV's.
@@ -180,6 +249,86 @@ public class g3UnityUtils
             result[i] = vec[i];
         return result;
     }
+    
+    // per-type conversion functions
 
+    public static void dvector_to_vector3(DVector<double> vec, ref List<Vector3> result)
+    {
+        int nLen = vec.Length / 3;
 
+        if (result == null || result.Count != nLen) {
+            result = new List<Vector3>(new Vector3[nLen]);
+        }
+
+        Debug.Log("nlen: " + nLen + ", " + result.Count);
+
+        for (int i = 0; i < nLen; ++i)
+        {
+            result[i] = new Vector3(
+                (float)vec[3 * i],
+                (float)vec[3 * i + 1],
+                (float)vec[3 * i + 2]
+                );
+        }
+    }
+    public static void dvector_to_vector3(DVector<float> vec, ref List<Vector3> result)
+    {
+        int nLen = vec.Length / 3;
+
+        if (result == null || result.Count != nLen) { 
+            result = new List<Vector3>(new Vector3[nLen]);
+        }
+
+        for (int i = 0; i < nLen; ++i)
+        {
+            result[i] = new Vector3(
+                vec[3 * i],
+                vec[3 * i + 1],
+                vec[3 * i + 2]
+                );
+        }
+    }
+    public static void dvector_to_vector2(DVector<float> vec, ref List<Vector2> result)
+    {
+        int nLen = vec.Length / 2;
+
+        if (result == null || result.Count != nLen) { 
+            result = new List<Vector2>(new Vector2[nLen]);
+        }
+
+        for (int i = 0; i < nLen; ++i)
+        {
+            var r = new Vector2(
+                vec[2 * i],
+                vec[2 * i + 1]
+                );
+            result[i] = r;
+        }
+    }
+    public static void dvector_to_color(DVector<float> vec, ref List<Color> result)
+    {
+        int nLen = vec.Length / 3;
+
+        if (result == null || result.Count != nLen) { 
+            result = new List<Color>(new Color[nLen]);
+        }
+
+        for (int i = 0; i < nLen; ++i)
+        {
+            result[i] = new Color(
+                vec[3 * i], vec[3 * i + 1], vec[3 * i + 2]);
+        }
+    }
+    public static void dvector_to_int(DVector<int> vec, ref List<int> result)
+    {
+        // todo this could be faster because we can directly copy chunks...
+        int nLen = vec.Length;
+
+        if (result == null || result.Count != nLen) { 
+            result = new List<int>(new int[nLen]);
+        }
+
+        for (int i = 0; i < nLen; ++i)
+            result[i] = vec[i];
+    }
 }

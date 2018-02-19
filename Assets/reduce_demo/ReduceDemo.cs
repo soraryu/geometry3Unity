@@ -12,6 +12,8 @@ public class ReduceDemo : MonoBehaviour
     Coroutine active_reduce;
 
     GameObject meshGO;
+    MeshFilter meshFilter;
+    g3UnityUtils.TemporaryMesh temporaryMesh = new g3UnityUtils.TemporaryMesh();
 
     string curPath;
 
@@ -62,7 +64,6 @@ public class ReduceDemo : MonoBehaviour
         editor.AppendMesh(sphereMesh);
 
         // SDF MERGING
-
         DMesh3 mesh = editor.Mesh;
 
         int num_cells = 32;
@@ -106,11 +107,13 @@ public class ReduceDemo : MonoBehaviour
             
             // create initial mesh
             meshGO = g3UnityUtils.CreateMeshGO("start_mesh", outputMesh, wireframeShader);
+            meshFilter = meshGO.GetComponent<MeshFilter>();
 
             Debug.Log("unity blocking side took " + watch.ElapsedMilliseconds);
         });
     }
 
+    public int lastTriangleCount;
 
     // Update is called once per frame
     void Update () {
@@ -122,7 +125,12 @@ public class ReduceDemo : MonoBehaviour
             reduce = new InteractiveReducer(curMesh);
             active_reduce = StartCoroutine(reduce_playback());
         }
-	}
+
+        if (triangleCount != lastTriangleCount) { 
+            ReduceNow();
+            lastTriangleCount = triangleCount;
+        }
+    }
 
     public int triangleCount = 4000;
     [ContextMenu("Reduce Now")]
@@ -133,20 +141,27 @@ public class ReduceDemo : MonoBehaviour
             watch.Restart();
 
             var resultMesh = new DMesh3(startMesh);
-            Reducer r = new Reducer(resultMesh);
-            r.ReduceToTriangleCount(triangleCount);
-            resultMesh = r.Mesh;
+            //Reducer r = new Reducer(resultMesh);
+            //r.ReduceToTriangleCount(triangleCount);
+            //resultMesh = r.Mesh;
+
+            Remesher rem = new Remesher(resultMesh);
+            rem.SetTargetEdgeLength(0.1f);
+            rem.Precompute();
+
+            for(int i = 0; i < 10; i++) { 
+                rem.BasicRemeshPass();
+                rem.Mesh.CheckValidity();
+            }
 
             Debug.Log("reducing took " + watch.ElapsedMilliseconds); watch.Restart();
 
+            g3UnityUtils.SetTemporaryMesh(temporaryMesh, resultMesh);
+            Debug.Log("d3 to temp mesh took " + watch.ElapsedMilliseconds); watch.Restart();
+            
             Loom.QueueOnMainThread(() =>
             {
-                // load wireframe shader
-                Material wireframeShader = g3UnityUtils.SafeLoadMaterial("wireframe_shader/Wireframe");
-
-                // create initial mesh
-                meshGO = g3UnityUtils.CreateMeshGO("start_mesh", resultMesh, wireframeShader);
-
+                temporaryMesh.ApplyTo(meshFilter.sharedMesh);
                 Debug.Log("unity blocking side took " + watch.ElapsedMilliseconds);
             });
         });
