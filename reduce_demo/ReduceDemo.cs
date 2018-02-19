@@ -39,25 +39,17 @@ public class ReduceDemo : MonoBehaviour
 
     void Task()
     {
-        //try { 
-
-
         watch = new System.Diagnostics.Stopwatch();
         watch.Start();
-
-        // find path to sample file
-        // string filePath = Path.Combine(curPath, Path.Combine("..\\sample_files", "bunny_solid.obj"));
-
+        
         // LOADING
 
         // load sample file, convert to unity coordinate system, translate and scale to origin
-        // var bunnyMesh = sdfMesh = StandardMeshReader.ReadMesh(filePath);
         if (bunnyMesh == null)
             bunnyMesh = new Sphere3Generator_NormalizedCube().Generate().MakeDMesh();
         MeshTransforms.FlipLeftRightCoordSystems(bunnyMesh);
         MeshTransforms.Translate(bunnyMesh, -bunnyMesh.CachedBounds.Center);
         MeshTransforms.Scale(bunnyMesh, 8.0 / bunnyMesh.CachedBounds.MaxDim);
-
 
         // SUBTRACT A SPHERE
         var SphereRadius = 1f;
@@ -90,7 +82,7 @@ public class ReduceDemo : MonoBehaviour
 
         var iso = new DenseGridTrilinearImplicit(sdf.Grid, sdf.GridOrigin, sdf.CellSize);
         
-        MarchingCubes c = new MarchingCubes();
+        g3.MarchingCubes c = new g3.MarchingCubes();
         c.Implicit = iso;
         c.Bounds = combinedMesh.CachedBounds;
         c.CubeSize = c.Bounds.MaxDim / num_cells;
@@ -100,11 +92,7 @@ public class ReduceDemo : MonoBehaviour
 
         sdfMesh = new DMesh3(c.Mesh);
 
-        // StandardMeshWriter.WriteMesh("c:\\demo\\output_mesh.obj", c.Mesh, WriteOptions.Defaults);
-
         Log("marching cubes took " + watch.ElapsedMilliseconds); watch.Reset(); watch.Start();
-
-        //g3UnityUtils.SetTemporaryMesh(temporaryMesh, reducedMesh);
 
         Loom.QueueOnMainThread(() =>
         {
@@ -117,13 +105,6 @@ public class ReduceDemo : MonoBehaviour
 
             Log("unity blocking side took " + watch.ElapsedMilliseconds);
         });
-
-        //}
-        //catch(System.Exception e)
-        //{
-        //    Debug.Log(e.ToString());
-        //    Debug.Log(e.GetBaseException().StackTrace);
-        //}
     }
 
     // Update is called once per frame
@@ -142,25 +123,19 @@ public class ReduceDemo : MonoBehaviour
     [ContextMenu("Reduce")]
     void ReduceAsync()
     {
-        RunMeshFuncAsync(Reduce);
+        g3UnityUtils.RunMeshFuncAsync(sdfMesh, temporaryMesh, meshFilter.sharedMesh, Reduce);
         lastTriangleCount = triangleCount;
     }
 
     [ContextMenu("Remesh")]
     void RemeshAsync()
     {
-        RunMeshFuncAsync(Remesh);
+        g3UnityUtils.RunMeshFuncAsync(sdfMesh, temporaryMesh, meshFilter.sharedMesh, Remesh);
         lastEdgeLength = edgeLength;
     }
 
     public int triangleCount = 4000;
     public float edgeLength = 0.1f;
-
-    object locker = new object();
-
-    System.Threading.ManualResetEvent evt = new System.Threading.ManualResetEvent(true);
-
-    volatile bool currentlyProcessing = false;
 
     DMesh3 Reduce(DMesh3 mesh)
     {
@@ -179,38 +154,9 @@ public class ReduceDemo : MonoBehaviour
         {
             rem.BasicRemeshPass();
             rem.Mesh.CheckValidity();
-            Log("remesh pass " + (i + 1) + " of " + 5 + " done");
         }
 
         return rem.Mesh;
-    }
-
-    void RunMeshFuncAsync(System.Func<DMesh3, DMesh3> meshFunction)
-    {
-        Loom.RunAsync(() =>
-        {
-            watch.Reset(); watch.Start();
-            Log("starting async mesh func");
-
-            var processingMesh = new DMesh3(sdfMesh);
-            var resultMesh = meshFunction(processingMesh);
-
-            Log("mesh func took " + watch.ElapsedMilliseconds); watch.Reset(); watch.Start();
-            lock (locker)
-            {
-                g3UnityUtils.SetTemporaryMesh(temporaryMesh, resultMesh);
-                Log("d3 to temp mesh took " + watch.ElapsedMilliseconds); watch.Reset(); watch.Start();
-            }
-
-            Loom.QueueOnMainThread(() =>
-            {
-                lock (locker)
-                {
-                    temporaryMesh.ApplyTo(meshFilter.sharedMesh);
-                    Log("unity blocking side took " + watch.ElapsedMilliseconds);
-                }
-            });
-        });
     }
 
     public bool logOutput = false;

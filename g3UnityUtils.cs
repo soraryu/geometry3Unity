@@ -329,4 +329,38 @@ public class g3UnityUtils
         for (int i = 0; i < nLen; ++i)
             result[i] = vec[i];
     }
+
+    static Dictionary<TemporaryMesh, object> lockObjects = new Dictionary<TemporaryMesh, object>();
+    public static void RunMeshFuncAsync(DMesh3 baseMesh, g3UnityUtils.TemporaryMesh temporaryMesh, Mesh targetMesh, System.Func<DMesh3, DMesh3> meshFunction)
+    {
+        if (!lockObjects.ContainsKey(temporaryMesh))
+            lockObjects.Add(temporaryMesh, new object());
+
+        var locker = lockObjects[temporaryMesh];
+
+        Loom.RunAsync(() =>
+        {
+            //watch.Reset(); watch.Start();
+            //Log("starting async mesh func");
+
+            var processingMesh = new DMesh3(baseMesh);
+            var resultMesh = meshFunction(processingMesh);
+
+            //Log("mesh func took " + watch.ElapsedMilliseconds); watch.Reset(); watch.Start();
+            lock (locker)
+            {
+                g3UnityUtils.SetTemporaryMesh(temporaryMesh, resultMesh);
+                //Log("d3 to temp mesh took " + watch.ElapsedMilliseconds); watch.Reset(); watch.Start();
+            }
+
+            Loom.QueueOnMainThread(() =>
+            {
+                lock (locker)
+                {
+                    temporaryMesh.ApplyTo(targetMesh);
+                    //Log("unity blocking side took " + watch.ElapsedMilliseconds);
+                }
+            });
+        });
+    }
 }

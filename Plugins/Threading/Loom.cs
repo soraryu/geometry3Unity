@@ -57,6 +57,12 @@ using System.Threading.Tasks;
 
 		public static void QueueOnMainThread(Action action, float time = 0f)
 		{
+            //if (!Application.isPlaying)
+            //{
+            //    action();
+            //    return;
+            //}
+
 			if (time != 0)
 			{
 				lock (Current._delayed)
@@ -75,14 +81,20 @@ using System.Threading.Tasks;
 
 		public static void RunAsync(Action a)
 		{
-	#if !UNITY_EDITOR && UNITY_METRO
+#if !UNITY_EDITOR && UNITY_METRO
 			Task.Run(() => RunAction(a));
-	#else
-			var t = new Thread(RunAction);
-			t.Priority = System.Threading.ThreadPriority.Normal;
-			t.Start(a);
-	#endif
-		}
+#else
+        //if (Application.isPlaying)
+        {
+            var t = new Thread(RunAction);
+            t.Priority = System.Threading.ThreadPriority.Normal;
+            t.Start(a);
+        }
+        //else { 
+        //    a();
+        //}
+#endif
+    }
 
 		private static void RunAction(object action)
 		{
