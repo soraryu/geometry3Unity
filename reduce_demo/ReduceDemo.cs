@@ -29,6 +29,9 @@ public class ReduceDemo : MonoBehaviour
         curPath = Application.dataPath;
         bunnyMesh = g3UnityUtils.UnityMeshToDMesh(mesh);
 
+        lastEdgeLength = edgeLength;
+        lastTriangleCount = triangleCount;
+
         Loom.RunAsync(Task);
     }
 
@@ -81,7 +84,7 @@ public class ReduceDemo : MonoBehaviour
         MeshSignedDistanceGrid sdf = new MeshSignedDistanceGrid(combinedMesh, cell_size);
         sdf.Compute();
 
-        Debug.Log("sdf took " + watch.ElapsedMilliseconds); watch.Reset(); watch.Start();
+        Log("sdf took " + watch.ElapsedMilliseconds); watch.Reset(); watch.Start();
 
         DenseGrid3f grid = sdf.Grid;
 
@@ -99,7 +102,7 @@ public class ReduceDemo : MonoBehaviour
 
         // StandardMeshWriter.WriteMesh("c:\\demo\\output_mesh.obj", c.Mesh, WriteOptions.Defaults);
 
-        Debug.Log("marching cubes took " + watch.ElapsedMilliseconds); watch.Reset(); watch.Start();
+        Log("marching cubes took " + watch.ElapsedMilliseconds); watch.Reset(); watch.Start();
 
         //g3UnityUtils.SetTemporaryMesh(temporaryMesh, reducedMesh);
 
@@ -112,7 +115,7 @@ public class ReduceDemo : MonoBehaviour
             meshGO = g3UnityUtils.CreateMeshGO("start_mesh", sdfMesh, wireframeShader);
             meshFilter = meshGO.GetComponent<MeshFilter>();
 
-            Debug.Log("unity blocking side took " + watch.ElapsedMilliseconds);
+            Log("unity blocking side took " + watch.ElapsedMilliseconds);
         });
 
         //}
@@ -176,7 +179,7 @@ public class ReduceDemo : MonoBehaviour
         {
             rem.BasicRemeshPass();
             rem.Mesh.CheckValidity();
-            Debug.Log("remesh pass " + (i + 1) + " of " + 5 + " done");
+            Log("remesh pass " + (i + 1) + " of " + 5 + " done");
         }
 
         return rem.Mesh;
@@ -187,16 +190,16 @@ public class ReduceDemo : MonoBehaviour
         Loom.RunAsync(() =>
         {
             watch.Reset(); watch.Start();
-            Debug.Log("starting async mesh func");
+            Log("starting async mesh func");
 
             var processingMesh = new DMesh3(sdfMesh);
             var resultMesh = meshFunction(processingMesh);
 
-            Debug.Log("mesh func took " + watch.ElapsedMilliseconds); watch.Reset(); watch.Start();
+            Log("mesh func took " + watch.ElapsedMilliseconds); watch.Reset(); watch.Start();
             lock (locker)
             {
                 g3UnityUtils.SetTemporaryMesh(temporaryMesh, resultMesh);
-                Debug.Log("d3 to temp mesh took " + watch.ElapsedMilliseconds); watch.Reset(); watch.Start();
+                Log("d3 to temp mesh took " + watch.ElapsedMilliseconds); watch.Reset(); watch.Start();
             }
 
             Loom.QueueOnMainThread(() =>
@@ -204,9 +207,16 @@ public class ReduceDemo : MonoBehaviour
                 lock (locker)
                 {
                     temporaryMesh.ApplyTo(meshFilter.sharedMesh);
-                    Debug.Log("unity blocking side took " + watch.ElapsedMilliseconds);
+                    Log("unity blocking side took " + watch.ElapsedMilliseconds);
                 }
             });
         });
+    }
+
+    public bool logOutput = false;
+    void Log(object toLog)
+    {
+        if(logOutput)
+            Debug.Log(toLog);
     }
 }

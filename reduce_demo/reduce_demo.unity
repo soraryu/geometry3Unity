@@ -220,7 +220,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   mesh: {fileID: 4300000, guid: 49dabea32b9f46148a44a8d240e3e66c, type: 3}
   triangleCount: 4000
-  edgeLength: 0.05
+  edgeLength: 0.2
 --- !u!1 &976819137
 GameObject:
   m_ObjectHideFlags: 0
