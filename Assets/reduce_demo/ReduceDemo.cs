@@ -113,7 +113,7 @@ public class ReduceDemo : MonoBehaviour
         });
     }
 
-    public int lastTriangleCount;
+    int lastTriangleCount;
 
     // Update is called once per frame
     void Update () {
@@ -141,18 +141,18 @@ public class ReduceDemo : MonoBehaviour
             watch.Restart();
 
             var resultMesh = new DMesh3(startMesh);
-            //Reducer r = new Reducer(resultMesh);
-            //r.ReduceToTriangleCount(triangleCount);
-            //resultMesh = r.Mesh;
+            Reducer r = new Reducer(resultMesh);
+            r.ReduceToTriangleCount(triangleCount);
+            resultMesh = r.Mesh;
 
-            Remesher rem = new Remesher(resultMesh);
-            rem.SetTargetEdgeLength(0.1f);
-            rem.Precompute();
+            //Remesher rem = new Remesher(resultMesh);
+            //rem.SetTargetEdgeLength(0.1f);
+            //rem.Precompute();
 
-            for(int i = 0; i < 10; i++) { 
-                rem.BasicRemeshPass();
-                rem.Mesh.CheckValidity();
-            }
+            //for(int i = 0; i < 10; i++) { 
+            //    rem.BasicRemeshPass();
+            //    rem.Mesh.CheckValidity();
+            //}
 
             Debug.Log("reducing took " + watch.ElapsedMilliseconds); watch.Restart();
 
