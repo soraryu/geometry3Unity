@@ -47,6 +47,8 @@ public class MeshReducer : MonoBehaviour {
     // Update is called once per frame
     void Update ()
     {
+        if (target == null) return;
+
 		if(target.sharedMesh != lastMesh || lastTriangleCount != triangleCount)
         {
             baseMesh = g3UnityUtils.UnityMeshToDMesh(target.sharedMesh);
