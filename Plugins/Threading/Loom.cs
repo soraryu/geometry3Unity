@@ -26,7 +26,7 @@ namespace g3
                 _current = GameObject.FindObjectOfType<Loom>();
                 if (_current == null)
                 {
-                    var g = new GameObject("__Singleton:g3:Loom");
+                    var g = new GameObject("__g3:EditorThreadingHelper");
                     g.hideFlags = HideFlags.DontSave;
                     _current = g.AddComponent<Loom>();
                 };
