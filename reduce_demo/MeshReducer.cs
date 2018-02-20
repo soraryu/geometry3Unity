@@ -31,18 +31,13 @@ public class MeshReducer : MonoBehaviour {
     }
 
     DMesh3 Reduce(DMesh3 mesh)
-    { 
+    {
         Reducer r = new Reducer(mesh);
         r.ReduceToTriangleCount(triangleCount);
         return r.Mesh;
     }
 
     Mesh lastMesh;
-
-    private void Start()
-    {
-        //Loom.Check();
-    }
 
     // Update is called once per frame
     void Update ()

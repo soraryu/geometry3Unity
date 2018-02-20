@@ -103,8 +103,7 @@ namespace ThreadUtils
             return waitHandle;
         }
     }
-
-    [ExecuteInEditMode]
+    
     public class JobScheduler : MonoBehaviour
     {
         Queue<Job> workToBeDone = new Queue<Job>();
@@ -122,7 +121,7 @@ namespace ThreadUtils
                 if(instance == null)
                 {
                     var go = new GameObject("JobScheduler");
-                    go.hideFlags = HideFlags.DontSave;
+                    go.hideFlags = HideFlags.HideAndDontSave;
                     instance = go.AddComponent<JobScheduler>();
                 }
                 return instance;
@@ -132,20 +131,17 @@ namespace ThreadUtils
         IEnumerator coroutine;
         void Awake()
         {
-            if(Application.isPlaying) {
-                StartCoroutine(Run());
-            }
-            else {
-#if UNITY_EDITOR
-                // If you want this to run in Editor use this instead
-                coroutine = Run();
-                UnityEditor.EditorApplication.update += Progress;
-#endif
-            }
+            if(coroutine == null) coroutine = Run();
         }
 
-        void Progress()
+        private void Update()
         {
+            Progress();
+        }
+
+        public void Progress()
+        {
+            if (coroutine == null) coroutine = Run();
             coroutine.MoveNext();
         }
 
@@ -155,13 +151,13 @@ namespace ThreadUtils
             {
                 workerThread.Abort();
             }
-#if UNITY_EDITOR
-            UnityEditor.EditorApplication.update -= Progress;
-#endif
         }
 
         public Job AddJob(Action workToDo, AsyncCallback callback = null, object asyncState = null)
         {
+            if (coroutine == null)
+                coroutine = Run();
+
             Job job = new Job(workToDo, callback, asyncState);
             lock (workToBeDone)
             {

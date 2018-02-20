@@ -134,16 +134,16 @@ public class g3UnityUtils
     /// </summary>
     public static void DMeshToTemporaryMesh(DMesh3 m, TemporaryMesh sharedMesh = null)
     {
-        var unityMesh = sharedMesh;
+        var temporaryMesh = sharedMesh;
 
-        dvector_to_vector3(m.VerticesBuffer, ref unityMesh.vertices);
+        dvector_to_vector3(m.VerticesBuffer, ref temporaryMesh.vertices);
         if (m.HasVertexNormals)
-            dvector_to_vector3(m.NormalsBuffer, ref unityMesh.normals);
+            dvector_to_vector3(m.NormalsBuffer, ref temporaryMesh.normals);
         if (m.HasVertexColors)
-            dvector_to_color(m.ColorsBuffer, ref unityMesh.colors);
+            dvector_to_color(m.ColorsBuffer, ref temporaryMesh.colors);
         if (m.HasVertexUVs)
-             dvector_to_vector2(m.UVBuffer, ref unityMesh.uv1);
-        dvector_to_int(m.TrianglesBuffer, ref unityMesh.triangles);
+             dvector_to_vector2(m.UVBuffer, ref temporaryMesh.uv1);
+        dvector_to_int(m.TrianglesBuffer, ref temporaryMesh.triangles);
     }
 
     /// <summary>
@@ -151,10 +151,21 @@ public class g3UnityUtils
     /// </summary>
     public static DMesh3 UnityMeshToDMesh(Mesh mesh)
     {
+        DMesh3 dmesh;
+
         Vector3[] mesh_vertices = mesh.vertices;
         Vector3f[] dmesh_vertices = new Vector3f[mesh_vertices.Length];
         for (int i = 0; i < mesh.vertexCount; ++i)
             dmesh_vertices[i] = mesh_vertices[i];
+
+        Vector2[] mesh_uvs = mesh.uv;
+        Vector2f[] dmesh_uvs = null;
+        if (mesh_uvs != null)
+        {
+            dmesh_uvs = new Vector2f[mesh_vertices.Length];
+            for (int i = 0; i < mesh.vertexCount; ++i)
+                dmesh_uvs[i] = mesh_uvs[i];
+        }
 
         Vector3[] mesh_normals = mesh.normals;
         if (mesh_normals != null) {
@@ -162,11 +173,19 @@ public class g3UnityUtils
             for (int i = 0; i < mesh.vertexCount; ++i)
                 dmesh_normals[i] = mesh_normals[i];
 
-            return DMesh3Builder.Build(dmesh_vertices, mesh.triangles, dmesh_normals);
+            dmesh = DMesh3Builder.Build(dmesh_vertices, mesh.triangles, dmesh_normals);
 
         } else {
-            return DMesh3Builder.Build<Vector3f,int,Vector3f>(dmesh_vertices, mesh.triangles, null, null);
+            dmesh = DMesh3Builder.Build<Vector3f,int,Vector3f>(dmesh_vertices, mesh.triangles, null, null);
         }
+
+        if(dmesh_uvs != null) {
+            var dv = new DVector<float>();
+            vector2f_to_dvector(dmesh_uvs, ref dv);
+            dmesh.UVBuffer = dv;
+        }
+
+        return dmesh;
     }
 
 
@@ -192,11 +211,6 @@ public class g3UnityUtils
         }
         return mat;
     }
-
-
-
-
-
 
     // per-type conversion functions
     public static Vector3[] dvector_to_vector3(DVector<double> vec)
@@ -305,6 +319,21 @@ public class g3UnityUtils
             result[i] = r;
         }
     }
+    public static void vector2f_to_dvector(Vector2f[] vec, ref DVector<float> result)
+    {
+        int nLen = vec.Length * 2;
+
+        if (result == null || result.Length != nLen)
+        {
+            result = new DVector<float>(new float[nLen]);
+        }
+
+        for (int i = 0; i < nLen / 2; ++i)
+        {
+            result[2 * i + 0] = vec[i].x;
+            result[2 * i + 1] = vec[i].y;
+        }
+    }
     public static void dvector_to_color(DVector<float> vec, ref List<Color> result)
     {
         int nLen = vec.Length / 3;
@@ -341,7 +370,7 @@ public class g3UnityUtils
         var locker = lockObjects[temporaryMesh];
         var watch = new System.Diagnostics.Stopwatch();
         
-        g3.Loom.RunAsync(() =>
+        ThreadUtils.JobScheduler.Instance.AddJob(() =>
         {
             watch.Reset(); watch.Start();
             Log("starting async mesh func");
@@ -355,20 +384,12 @@ public class g3UnityUtils
                 g3UnityUtils.SetTemporaryMesh(temporaryMesh, resultMesh);
                 Log("d3 to temp mesh took " + watch.ElapsedMilliseconds); watch.Reset(); watch.Start();
             }
-
-            try {
-                g3.Loom.QueueOnMainThread(() =>
-                {
-                    lock (locker)
-                    {
-                        temporaryMesh.ApplyTo(targetMesh);
-                        Log("unity blocking side took " + watch.ElapsedMilliseconds);
-                    }
-                });
-            }
-            catch(System.Exception e)
+        }, (result) =>
+        {
+            lock (locker)
             {
-                Log(e);
+                temporaryMesh.ApplyTo(targetMesh, false);
+                Log("unity blocking side took " + watch.ElapsedMilliseconds);
             }
         });
     }
