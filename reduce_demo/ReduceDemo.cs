@@ -24,7 +24,7 @@ public class ReduceDemo : MonoBehaviour
     // Use this for initialization
     void Start ()
     {
-        Loom.Check();
+        //Loom.Check();
 
         curPath = Application.dataPath;
         bunnyMesh = g3UnityUtils.UnityMeshToDMesh(mesh);
@@ -32,7 +32,7 @@ public class ReduceDemo : MonoBehaviour
         lastEdgeLength = edgeLength;
         lastTriangleCount = triangleCount;
 
-        Loom.RunAsync(Task);
+        //Loom.RunAsync(Task);
     }
 
     public Mesh mesh;
@@ -94,7 +94,7 @@ public class ReduceDemo : MonoBehaviour
 
         Log("marching cubes took " + watch.ElapsedMilliseconds); watch.Reset(); watch.Start();
 
-        Loom.QueueOnMainThread(() =>
+        //Loom.QueueOnMainThread(() =>
         {
             // load wireframe shader
             Material wireframeShader = g3UnityUtils.SafeLoadMaterial("wireframe_shader/Wireframe");
@@ -104,7 +104,8 @@ public class ReduceDemo : MonoBehaviour
             meshFilter = meshGO.GetComponent<MeshFilter>();
 
             Log("unity blocking side took " + watch.ElapsedMilliseconds);
-        });
+        }
+        //);
     }
 
     // Update is called once per frame

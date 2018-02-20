@@ -41,7 +41,7 @@ public class MeshReducer : MonoBehaviour {
 
     private void Start()
     {
-        Loom.Check();
+        //Loom.Check();
     }
 
     // Update is called once per frame
