@@ -66,4 +66,29 @@ public class MeshReducer : MonoBehaviour {
             ReduceAsync();
         }
 	}
+
+#if UNITY_EDITOR
+    [ContextMenu("Save Mesh Asset")]
+    public void SaveMeshAsset()
+    {
+        if (_meshFilter == null || _meshFilter.sharedMesh == null) return;
+        SaveMesh(_meshFilter.sharedMesh, "ReducedMesh", true, false);
+    }
+
+    public static void SaveMesh(Mesh mesh, string name, bool makeNewInstance, bool optimizeMesh)
+    {
+        string path = UnityEditor.EditorUtility.SaveFilePanel("Save Separate Mesh Asset", "Assets/", name, "asset");
+        if (string.IsNullOrEmpty(path)) return;
+
+        path = UnityEditor.FileUtil.GetProjectRelativePath(path);
+
+        Mesh meshToSave = (makeNewInstance) ? Object.Instantiate(mesh) as Mesh : mesh;
+
+        if (optimizeMesh)
+            UnityEditor.MeshUtility.Optimize(meshToSave);
+
+        UnityEditor.AssetDatabase.CreateAsset(meshToSave, path);
+        UnityEditor.AssetDatabase.SaveAssets();
+    }
+#endif
 }
