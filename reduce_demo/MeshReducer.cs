@@ -17,6 +17,10 @@ public class MeshReducer : MonoBehaviour {
     }
 
     public int triangleCount = 3000;
+    public bool recalculateNormals = true;
+    [Range(0, 180)]
+    public float normalsAngle = 30;
+
     int lastTriangleCount;
 
     public MeshFilter target;
@@ -26,7 +30,7 @@ public class MeshReducer : MonoBehaviour {
 
     void ReduceAsync()
     {
-        g3UnityUtils.RunMeshFuncAsync(baseMesh, temporaryMesh, meshFilter.sharedMesh, Reduce);
+        g3UnityUtils.RunMeshFuncAsync(inputTempMesh, temporaryMesh, meshFilter.sharedMesh, Reduce, recalculateNormals, normalsAngle);
         lastTriangleCount = triangleCount;
     }
 
@@ -38,16 +42,23 @@ public class MeshReducer : MonoBehaviour {
     }
 
     Mesh lastMesh;
+    bool lastRecalculateNormals;
+    float lastNormalsAngle = -1;
+
+    g3UnityUtils.TemporaryMesh inputTempMesh;
 
     // Update is called once per frame
     void Update ()
     {
         if (target == null) return;
 
-		if(target.sharedMesh != lastMesh || lastTriangleCount != triangleCount)
+		if(target.sharedMesh != lastMesh || lastTriangleCount != triangleCount || lastRecalculateNormals != recalculateNormals || lastNormalsAngle != normalsAngle)
         {
-            baseMesh = g3UnityUtils.UnityMeshToDMesh(target.sharedMesh);
+            inputTempMesh = g3UnityUtils.UnityMeshToTemporaryMesh(target.sharedMesh);
+
             lastMesh = target.sharedMesh;
+            lastRecalculateNormals = recalculateNormals;
+            lastNormalsAngle = normalsAngle;
 
             if (meshFilter.sharedMesh == null)
                 meshFilter.sharedMesh = new Mesh();

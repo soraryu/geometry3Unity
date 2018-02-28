@@ -81,15 +81,42 @@ public class g3UnityUtils
         public List<int> triangles = new List<int>();
         public List<Vector3> normals = new List<Vector3>();
         public List<Color> colors = new List<Color>();
-        public List<Vector2> uv1 = new List<Vector2>();
+        public List<Vector2> uv = new List<Vector2>();
+        public int vertexCount
+        {
+            get { return vertices.Count; }
+        }
 
-        public void ApplyTo(Mesh mesh, bool recalculateNormals = false)
+        public TemporaryMesh()
+        {
+
+        }
+
+        public TemporaryMesh(Mesh mesh)
+        {
+            mesh.GetVertices(this.vertices);
+            mesh.GetTriangles(this.triangles, 0);
+            mesh.GetNormals(this.normals);
+            mesh.GetColors(this.colors);
+            mesh.GetUVs(0, this.uv);
+        }
+
+        public int subMeshCount
+        {
+            get { return 1; }
+        }
+        public List<int> GetTriangles(int submeshIndex)
+        {
+            return triangles;
+        }
+
+        public void ApplyTo(Mesh mesh, bool recalculateNormals = false, float normalsAngle = 30f)
         {
             mesh.Clear();
 
             mesh.SetVertices(vertices);
             mesh.SetTriangles(triangles, 0);
-            mesh.SetUVs(0, uv1);
+            mesh.SetUVs(0, uv);
             if (!recalculateNormals)
                 mesh.SetNormals(normals);
             else
@@ -97,7 +124,7 @@ public class g3UnityUtils
             mesh.SetColors(colors);
 
             if (recalculateNormals)
-                mesh.RecalculateNormals();
+                mesh.RecalculateNormals(normalsAngle, true);
         }
     }
 
@@ -142,8 +169,58 @@ public class g3UnityUtils
         if (m.HasVertexColors)
             dvector_to_color(m.ColorsBuffer, ref temporaryMesh.colors);
         if (m.HasVertexUVs)
-             dvector_to_vector2(m.UVBuffer, ref temporaryMesh.uv1);
+             dvector_to_vector2(m.UVBuffer, ref temporaryMesh.uv);
         dvector_to_int(m.TrianglesBuffer, ref temporaryMesh.triangles);
+    }
+
+    public static TemporaryMesh UnityMeshToTemporaryMesh(Mesh mesh)
+    {
+        return new TemporaryMesh(mesh);
+    }
+
+    public static DMesh3 TemporaryMeshToDMesh3(TemporaryMesh mesh)
+    {
+        DMesh3 dmesh;
+
+        var mesh_vertices = mesh.vertices;
+        var mesh_vertices_count = mesh_vertices.Count;
+
+        Vector3f[] dmesh_vertices = new Vector3f[mesh_vertices_count];
+        for (int i = 0; i < mesh_vertices_count; ++i)
+            dmesh_vertices[i] = mesh_vertices[i];
+
+        var mesh_uvs = mesh.uv;
+        Vector2f[] dmesh_uvs = null;
+        if (mesh_uvs != null)
+        {
+            dmesh_uvs = new Vector2f[mesh_vertices_count];
+            for (int i = 0; i < mesh_vertices_count; ++i)
+                dmesh_uvs[i] = mesh_uvs[i];
+        }
+
+        var mesh_normals = mesh.normals;
+        if (mesh_normals != null)
+        {
+            Vector3f[] dmesh_normals = new Vector3f[mesh_vertices.Count];
+            for (int i = 0; i < mesh.vertexCount; ++i)
+                dmesh_normals[i] = mesh_normals[i];
+
+            dmesh = DMesh3Builder.Build(dmesh_vertices, mesh.triangles, dmesh_normals);
+
+        }
+        else
+        {
+            dmesh = DMesh3Builder.Build<Vector3f, int, Vector3f>(dmesh_vertices, mesh.triangles, null, null);
+        }
+
+        if (dmesh_uvs != null)
+        {
+            var dv = new DVector<float>();
+            vector2f_to_dvector(dmesh_uvs, ref dv);
+            dmesh.UVBuffer = dv;
+        }
+
+        return dmesh;
     }
 
     /// <summary>
@@ -153,24 +230,26 @@ public class g3UnityUtils
     {
         DMesh3 dmesh;
 
-        Vector3[] mesh_vertices = mesh.vertices;
-        Vector3f[] dmesh_vertices = new Vector3f[mesh_vertices.Length];
-        for (int i = 0; i < mesh.vertexCount; ++i)
+        var mesh_vertices = mesh.vertices;
+        var mesh_vertices_count = mesh_vertices.Length;
+
+        Vector3f[] dmesh_vertices = new Vector3f[mesh_vertices_count];
+        for (int i = 0; i < mesh_vertices_count; ++i)
             dmesh_vertices[i] = mesh_vertices[i];
 
         Vector2[] mesh_uvs = mesh.uv;
         Vector2f[] dmesh_uvs = null;
         if (mesh_uvs != null)
         {
-            dmesh_uvs = new Vector2f[mesh_vertices.Length];
-            for (int i = 0; i < mesh.vertexCount; ++i)
+            dmesh_uvs = new Vector2f[mesh_vertices_count];
+            for (int i = 0; i < mesh_vertices_count; ++i)
                 dmesh_uvs[i] = mesh_uvs[i];
         }
 
         Vector3[] mesh_normals = mesh.normals;
         if (mesh_normals != null) {
-            Vector3f[] dmesh_normals = new Vector3f[mesh_vertices.Length];
-            for (int i = 0; i < mesh.vertexCount; ++i)
+            Vector3f[] dmesh_normals = new Vector3f[mesh_vertices_count];
+            for (int i = 0; i < mesh_vertices_count; ++i)
                 dmesh_normals[i] = mesh_normals[i];
 
             dmesh = DMesh3Builder.Build(dmesh_vertices, mesh.triangles, dmesh_normals);
@@ -359,11 +438,25 @@ public class g3UnityUtils
 
         for (int i = 0; i < nLen; ++i)
             result[i] = vec[i];
-    } 
+    }
+
+    public static void RunMeshFuncAsync(DMesh3 baseMesh, g3UnityUtils.TemporaryMesh temporaryMesh, Mesh targetMesh, System.Func<DMesh3, DMesh3> meshFunction, bool recalculateNormals = false, float normalsAngle = 30)
+    {
+        RunMeshFuncAsync(baseMesh, null, temporaryMesh, targetMesh, meshFunction, recalculateNormals, normalsAngle);
+    }
+
+    public static void RunMeshFuncAsync(TemporaryMesh inputTempMesh, g3UnityUtils.TemporaryMesh temporaryMesh, Mesh targetMesh, System.Func<DMesh3, DMesh3> meshFunction, bool recalculateNormals = false, float normalsAngle = 30)
+    {
+        RunMeshFuncAsync(null, inputTempMesh, temporaryMesh, targetMesh, meshFunction, recalculateNormals, normalsAngle);
+    }
 
     static Dictionary<TemporaryMesh, object> lockObjects = new Dictionary<TemporaryMesh, object>();
-    public static void RunMeshFuncAsync(DMesh3 baseMesh, g3UnityUtils.TemporaryMesh temporaryMesh, Mesh targetMesh, System.Func<DMesh3, DMesh3> meshFunction)
+    public static void RunMeshFuncAsync(DMesh3 _baseMesh, TemporaryMesh inputTempMesh, g3UnityUtils.TemporaryMesh temporaryMesh, Mesh targetMesh, System.Func<DMesh3, DMesh3> meshFunction, bool recalculateNormals = false, float normalsAngle = 30)
     {
+        DMesh3 baseMesh = null;
+        if (_baseMesh != null && inputTempMesh == null)
+            baseMesh = _baseMesh;
+
         if (!lockObjects.ContainsKey(temporaryMesh))
             lockObjects.Add(temporaryMesh, new object());
 
@@ -372,6 +465,9 @@ public class g3UnityUtils
         
         ThreadUtils.JobScheduler.Instance.AddJob(() =>
         {
+            if(_baseMesh == null && inputTempMesh != null)
+                baseMesh = g3UnityUtils.TemporaryMeshToDMesh3(inputTempMesh);
+
             watch.Reset(); watch.Start();
             Log("starting async mesh func");
 
@@ -382,6 +478,9 @@ public class g3UnityUtils
             lock (locker)
             {
                 g3UnityUtils.SetTemporaryMesh(temporaryMesh, resultMesh);
+                if (recalculateNormals)
+                    temporaryMesh.RecalculateNormals(normalsAngle, true);
+
                 Log("d3 to temp mesh took " + watch.ElapsedMilliseconds); watch.Reset(); watch.Start();
             }
         }, (result) =>
