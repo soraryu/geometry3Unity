@@ -13,7 +13,6 @@ public class ReduceDemo : MonoBehaviour
     MeshFilter meshFilter;
     g3UnityUtils.TemporaryMesh temporaryMesh = new g3UnityUtils.TemporaryMesh();
     System.Diagnostics.Stopwatch watch;
-    string curPath;
     
     int lastTriangleCount;
     float lastEdgeLength;
@@ -25,8 +24,7 @@ public class ReduceDemo : MonoBehaviour
     void Start ()
     {
         //Loom.Check();
-
-        curPath = Application.dataPath;
+        
         bunnyMesh = g3UnityUtils.UnityMeshToDMesh(mesh);
 
         lastEdgeLength = edgeLength;
