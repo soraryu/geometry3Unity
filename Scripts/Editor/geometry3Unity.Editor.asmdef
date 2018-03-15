@@ -1,0 +1,12 @@
+{
+    "name": "geometry3Unity.Editor",
+    "references": [
+        "geometry3Unity"
+    ],
+    "optionalUnityReferences": [],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false
+}
