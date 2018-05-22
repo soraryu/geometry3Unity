@@ -237,7 +237,7 @@ public static class g3UnityUtils
 
         Vector2[] mesh_uvs = mesh.uv;
         Vector2f[] dmesh_uvs = null;
-        if (mesh_uvs != null)
+        if (mesh_uvs != null && mesh_uvs.Length == mesh_vertices_count)
         {
             dmesh_uvs = new Vector2f[mesh_vertices_count];
             for (int i = 0; i < mesh_vertices_count; ++i)
@@ -245,7 +245,7 @@ public static class g3UnityUtils
         }
 
         Vector3[] mesh_normals = mesh.normals;
-        if (mesh_normals != null) {
+        if (mesh_normals != null && mesh_normals.Length == mesh_vertices_count) {
             Vector3f[] dmesh_normals = new Vector3f[mesh_vertices_count];
             for (int i = 0; i < mesh_vertices_count; ++i)
                 dmesh_normals[i] = mesh_normals[i];
