@@ -118,7 +118,7 @@ public static class g3UnityUtils
             if (!recalculateNormals)
                 mesh.SetNormals(normals);
             else
-                mesh.SetNormals(null);
+                mesh.SetNormals((Vector3[]) null);
             mesh.SetColors(colors);
 
             if (recalculateNormals)
